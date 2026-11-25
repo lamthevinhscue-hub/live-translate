@@ -1,0 +1,17 @@
+{
+  "name": "Live Translate – Dịch hội thoại trực tiếp",
+  "short_name": "Live Translate",
+  "description": "Dịch hội thoại, cuộc họp trực tiếp hai chiều cho 7 ngôn ngữ",
+  "lang": "vi",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f1420",
+  "theme_color": "#0f1420",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

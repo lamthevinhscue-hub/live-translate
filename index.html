@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Live Translate – Dịch hội thoại trực tiếp</title>
+<meta name="theme-color" content="#0f1420">
+<meta name="description" content="Dịch hội thoại, cuộc họp trực tiếp hai chiều cho 7 ngôn ngữ">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Live Translate">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div class="brand">🌐 Live Translate<small>Dịch hội thoại trực tiếp hai chiều</small></div>
+
+  <div class="group g-lang">
+    <select id="langA" class="lang-a" title="Ngôn ngữ A"></select>
+    <button class="btn icon" id="swapBtn" title="Đảo ngôn ngữ">⇄</button>
+    <select id="langB" class="lang-b" title="Ngôn ngữ B"></select>
+    <select id="direction" title="Chiều dịch">
+      <option value="two">⇄ Hai chiều</option>
+      <option value="one">→ Một chiều (A → B)</option>
+    </select>
+  </div>
+
+  <div class="group g-engine">
+    <select id="engine" title="Công cụ nhận diện giọng nói">
+      <option value="azure">Azure – tự nhận diện ngôn ngữ (khuyến nghị)</option>
+      <option value="webspeech">Miễn phí – chọn người nói thủ công</option>
+    </select>
+    <select id="source" title="Nguồn âm thanh">
+      <option value="mic">🎤 Micro</option>
+      <option value="tab">🖥️ Âm thanh họp online (tab/màn hình)</option>
+      <option value="mix">🎤+🖥️ Micro + họp online</option>
+    </select>
+  </div>
+
+  <button class="btn primary" id="startBtn">▶ Bắt đầu</button>
+
+  <div class="spacer"></div>
+
+  <div class="group g-tools">
+    <select id="viewMode" title="Chế độ hiển thị">
+      <option value="chat">Hội thoại</option>
+      <option value="split">Chia đôi 2 cột</option>
+      <option value="face">Đối diện (đặt máy giữa bàn)</option>
+      <option value="stage">Phụ đề sân khấu (chiếu màn hình lớn)</option>
+    </select>
+    <button class="btn icon" id="fontDown" title="Giảm cỡ chữ">A−</button>
+    <button class="btn icon" id="fontUp" title="Tăng cỡ chữ">A+</button>
+    <button class="btn icon" id="origBtn" title="Ẩn/hiện câu gốc">🅾</button>
+    <button class="btn icon" id="themeBtn" title="Giao diện sáng/tối">◐</button>
+    <button class="btn icon" id="fullBtn" title="Toàn màn hình">⛶</button>
+    <button class="btn icon" id="exportBtn" title="Xuất biên bản (.txt)">💾</button>
+    <button class="btn icon" id="clearBtn" title="Xóa hội thoại">🗑</button>
+    <button class="btn icon" id="settingsBtn" title="Cài đặt">⚙</button>
+    <button class="btn" id="bbhBtn" title="Kết thúc phiên họp và lưu hồ sơ để lập biên bản">📝 Kết thúc &amp; lập BBH</button>
+  </div>
+</header>
+
+<div id="speakerBar">
+  <button class="spk a" id="spkA">Người nói A</button>
+  <button class="spk b" id="spkB">Người nói B</button>
+  <span class="hint">Phím tắt: <b>Space</b> đổi người nói · <b>1</b>/<b>2</b> chọn trực tiếp</span>
+</div>
+
+<main id="main"></main>
+
+<footer>
+  <span><i class="dot" id="stDot"></i><span id="stText">Sẵn sàng</span></span>
+  <span id="meter" title="Mức âm thanh"><i></i></span>
+  <span id="stLang"></span>
+  <span id="stLatency"></span>
+  <span class="spacer"></span>
+  <span id="stProvider"></span>
+</footer>
+
+<dialog id="settings">
+  <div class="dlg-head"><h2>⚙ Cài đặt</h2><button class="btn icon" data-close>✕</button></div>
+  <div class="dlg-body">
+    <fieldset>
+      <legend>1. Azure Speech (nhận diện giọng nói + tự phát hiện ngôn ngữ)</legend>
+      <div class="row"><label for="azKey">Speech key</label><input id="azKey" type="password" placeholder="Khóa tài nguyên Azure Speech"></div>
+      <div class="row"><label for="azRegion">Region</label><input id="azRegion" type="text" placeholder="vd: southeastasia, eastasia, japaneast"></div>
+      <div class="row"><label for="silenceMs">Ngắt câu sau khoảng lặng (ms)</label><input id="silenceMs" type="number" min="200" max="3000" step="100"></div>
+      <p class="note">Tạo tài nguyên “Speech service” trên Azure Portal (gói F0 miễn phí có hạn mức giờ âm thanh hàng tháng). Nên chọn region gần Việt Nam (southeastasia) để giảm độ trễ.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>2. Dịch văn bản</legend>
+      <div class="row"><label for="trProvider">Dịch vụ dịch</label>
+        <select id="trProvider">
+          <option value="google">Google Translate (miễn phí, không cần khóa)</option>
+          <option value="azure">Azure Translator (ổn định, cần khóa)</option>
+          <option value="openai">OpenAI GPT (dịch theo ngữ cảnh, chất lượng cao nhất)</option>
+        </select></div>
+      <div class="row"><label for="liveTr">Dịch cả câu đang nói dở</label>
+        <select id="liveTr"><option value="1">Bật – hiển thị bản dịch tạm thời (nhanh hơn)</option><option value="0">Tắt – chỉ dịch khi hết câu (tiết kiệm chi phí)</option></select></div>
+      <div class="row"><label for="trKey">Azure Translator key</label><input id="trKey" type="password" placeholder="Chỉ cần khi chọn Azure Translator"></div>
+      <div class="row"><label for="trRegion">Azure Translator region</label><input id="trRegion" type="text" placeholder="vd: southeastasia (để trống nếu là global)"></div>
+      <div class="row"><label for="oaKey">OpenAI API key</label><input id="oaKey" type="password" placeholder="sk-... (chỉ cần khi chọn OpenAI)"></div>
+      <div class="row"><label for="oaModel">OpenAI model</label><select id="oaModel">
+        <option value="gpt-5.4-mini">gpt-5.4-mini – cân bằng chất lượng, tốc độ, chi phí (khuyến nghị)</option>
+        <option value="gpt-5.6-terra">gpt-5.6-terra – chất lượng cao hơn, chi phí khoảng gấp 2,7 lần</option>
+        <option value="gpt-5.6-luna">gpt-5.6-luna – nhanh và rẻ nhất dòng GPT-5.6</option>
+        <option value="gpt-4o-mini">gpt-4o-mini – model cũ, rẻ</option>
+      </select></div>
+      <div class="row"><label for="context">Bối cảnh cuộc họp</label><input id="context" type="text" placeholder="vd: Họp tín dụng doanh nghiệp giữa ngân hàng và đối tác Nhật Bản"></div>
+      <div class="row"><label for="glossary">Thuật ngữ / tên riêng<br><span class="note">mỗi dòng 1 mục; có thể ghi “gốc = dịch”</span></label>
+        <textarea id="glossary" rows="5" placeholder="VietinBank&#10;hạn mức tín dụng = credit limit&#10;thư tín dụng = L/C"></textarea></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>3. Âm thanh &amp; hiển thị</legend>
+      <div class="row"><label for="micSel">Thiết bị micro</label><select id="micSel"><option value="">Mặc định của hệ thống</option></select></div>
+      <div class="row"><label for="maxItems">Số câu hiển thị tối đa</label><input id="maxItems" type="number" min="20" max="1000" step="10"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>4. Phụ đề sân khấu</legend>
+      <div class="row"><label for="stageTitle">Dòng tiêu đề</label><input id="stageTitle" type="text" placeholder="vd: HỘI NGHỊ KHÁCH HÀNG DOANH NGHIỆP LỚN 2026 (để trống nếu không cần)"></div>
+      <div class="row"><label for="stageLines">Số dòng hiển thị</label><input id="stageLines" type="number" min="3" max="20" step="1"></div>
+      <div class="row"><label for="stageBg">Màu nền</label><input id="stageBg" type="color"></div>
+      <div class="row"><label for="stageFg">Màu chữ</label><input id="stageFg" type="color"></div>
+      <p class="note">Cột trái hiển thị lời nói gốc, cột phải hiển thị bản dịch. Bấm ⛶ để chiếu toàn màn hình chỉ riêng phần phụ đề.</p>
+      <p class="note">Mọi khóa API chỉ được lưu trong trình duyệt của máy này (localStorage), không gửi đi đâu ngoài nhà cung cấp dịch vụ tương ứng.</p>
+    </fieldset>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn" id="cfgExportBtn" title="Xuất toàn bộ cài đặt (kể cả khóa) thành tệp mã hóa để chuyển sang máy khác">📤 Xuất cấu hình</button>
+    <button class="btn" id="cfgImportBtn" title="Nhập cài đặt từ tệp đã xuất trên máy khác">📥 Nhập cấu hình</button>
+    <span class="spacer"></span>
+    <button class="btn" id="testBtn">🔎 Kiểm tra dịch</button>
+    <button class="btn primary" id="saveBtn">Lưu</button>
+  </div>
+</dialog>
+
+<dialog id="bbhDlg">
+  <div class="dlg-head"><h2>📝 Kết thúc phiên họp &amp; lưu hồ sơ lập biên bản</h2><button class="btn icon" data-close>✕</button></div>
+  <div class="dlg-body">
+    <p class="note" id="bbhSummary"></p>
+    <fieldset>
+      <legend>Thông tin cuộc họp (những gì lời nói không thể hiện)</legend>
+      <div class="row"><label for="bbLoai">Loại biên bản</label>
+        <select id="bbLoai">
+          <option value="khach_hang">Làm việc với khách hàng / đối tác</option>
+          <option value="noi_bo">Họp nội bộ</option>
+          <option value="dao_tao">Đào tạo / hội thảo</option>
+          <option value="mot_mot">Trao đổi 1-1</option>
+        </select></div>
+      <div class="row"><label for="bbVeViec">Chủ đề (Về việc)</label><input id="bbVeViec" type="text" placeholder="vd: Làm việc với Công ty ABC về nhu cầu vốn lưu động 2027"></div>
+      <div class="row"><label for="bbNgay">Ngày họp</label><input id="bbNgay" type="date"></div>
+      <div class="row"><label>Thời gian</label><div class="group"><input id="bbGioBD" type="time"> <span>đến</span> <input id="bbGioKT" type="time"></div></div>
+      <div class="row"><label for="bbDiaDiem">Địa điểm</label><input id="bbDiaDiem" type="text"></div>
+      <div class="row"><label for="bbVTB">Thành phần phía VietinBank</label><textarea id="bbVTB" rows="2" placeholder="Họ tên – chức danh; mỗi người cách nhau dấu chấm phẩy"></textarea></div>
+      <div class="row"><label for="bbDoiTac">Thành phần phía khách hàng / đối tác</label><textarea id="bbDoiTac" rows="2" placeholder="vd: Ông Tanaka – Giám đốc Tài chính"></textarea></div>
+      <div class="row"><label for="bbChuTri">Chủ trì</label><input id="bbChuTri" type="text"></div>
+      <div class="row"><label for="bbThuKy">Thư ký</label><input id="bbThuKy" type="text"></div>
+      <div class="row"><label for="bbSongNgu">Biên bản song ngữ</label><select id="bbSongNgu"></select></div>
+      <div class="row"><label for="bbGhiChu">Ghi chú cho người lập biên bản</label><textarea id="bbGhiChu" rows="2" placeholder="vd: Không đưa nội dung đánh giá nội bộ vào biên bản; nhấn mạnh phần phân công"></textarea></div>
+    </fieldset>
+    <fieldset>
+      <legend>Nơi lưu hồ sơ</legend>
+      <p class="note" id="bbhFolderInfo"></p>
+      <button class="btn" id="bbhPickBtn">📁 Chọn thư mục gốc lưu biên bản (2026_Cac BBH DNL)</button>
+    </fieldset>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn" id="bbhDownloadBtn" title="Dùng khi trình duyệt không hỗ trợ ghi thẳng vào thư mục">⬇ Tải hồ sơ về máy</button>
+    <button class="btn primary" id="bbhSaveBtn">💾 Lưu hồ sơ vào thư mục BBH</button>
+  </div>
+</dialog>
+
+<dialog id="cfgDlg">
+  <div class="dlg-head"><h2 id="cfgTitle">📤 Xuất cấu hình</h2><button class="btn icon" data-close>✕</button></div>
+  <div class="dlg-body">
+    <p class="note" id="cfgNote"></p>
+    <div class="row" id="cfgFileRow"><label for="cfgFile">Tệp cấu hình</label><input id="cfgFile" type="file" accept=".json,application/json"></div>
+    <div class="row"><label for="cfgPass">Mật khẩu</label><input id="cfgPass" type="password" autocomplete="new-password" placeholder="Tối thiểu 8 ký tự"></div>
+    <div class="row" id="cfgPass2Row"><label for="cfgPass2">Nhập lại mật khẩu</label><input id="cfgPass2" type="password" autocomplete="new-password"></div>
+    <div class="row" id="cfgKeysRow"><label for="cfgKeys">Kèm khóa API</label>
+      <select id="cfgKeys"><option value="1">Có – máy mới dùng được ngay</option><option value="0">Không – chỉ chuyển ngôn ngữ, thuật ngữ, giao diện</option></select></div>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn" data-close>Hủy</button>
+    <button class="btn primary" id="cfgGoBtn">Xuất tệp</button>
+  </div>
+</dialog>
+
+<script src="app.js"></script>
+</body>
+</html>
